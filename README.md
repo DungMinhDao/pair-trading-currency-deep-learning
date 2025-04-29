@@ -4,11 +4,13 @@
 To identify opportunities, traditional pair trading strategies often rely on statistical tools like cointegration and mean reversion. These methods assume linear relationships and stable dynamics, but markets—especially the fast-moving forex market—frequently exhibit nonlinear behaviors and structural shifts that challenge those assumptions. Our project aims to develop a deep learning-driven framework to detect and exploit short-term deviations in a synthetic EUR/USD and other currency pairs’ spread, utilizing neural networks to uncover hidden temporal patterns and nonlinear dynamics, thereby enhancing the profitability and resilience of long/short pair trading strategies.
 
 # Workflow
+This is the current workflow of the project. We implemented a demonstration of the full workflow in the Python file `MScFE_690_Team_9203_Robust.py`. The preliminary baseline results for Machine Learning models is in the IPython Notebook file.
+
 ![WhatsApp Image 2025-04-26 at 15 01 26_b617e48b](https://github.com/user-attachments/assets/9f9d6be7-7234-4d38-a747-3de9dcc8b75c)
 
 
 # Code
-The code is currently in the committed IPython Notebook file. The file on Google Colab is also accessible [here](https://colab.research.google.com/drive/1TctfiBYEhWehlVWe3qZgFIM5_EYYM4CS?usp=sharing)
+The code for analysis and preliminary results is currently in the committed IPython Notebook file. The file on Google Colab is also accessible [here](https://colab.research.google.com/drive/1TctfiBYEhWehlVWe3qZgFIM5_EYYM4CS?usp=sharing)
 
 ## Code structure explanation (notebook)
 
