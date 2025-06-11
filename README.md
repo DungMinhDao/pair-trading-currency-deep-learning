@@ -48,88 +48,98 @@ This is the current workflow of the project. We implemented a demonstration of t
 
 
 # Code
-The code for this project is organized into several sections, each corresponding to a key phase of the workflow. Below, we provide a detailed overview of the work done in each group of sections, along with result tables and visualizations where applicable. The full code for analysis and preliminary results is available in the committed IPython Notebook file, also accessible on Google Colab [here](https://colab.research.google.com/drive/1q8vL-H1VYMqL6DmmFG6h_N2LVgcWXgGj?usp=sharing).
+The code for this project is organized into several sections, each corresponding to a key phase of the workflow. Below, we provide a detailed overview of the work done in each group of sections, along with result tables and visualizations where applicable. The full code for analysis and results is available in the committed IPython Notebook file, also accessible on Google Colab [here](https://colab.research.google.com/drive/1q8vL-H1VYMqL6DmmFG6h_N2LVgcWXgGj?usp=sharing).
 
-## Sections 1-5: Data Acquisition and Preprocessing
-In these sections, we collected and preprocessed historical EUR/USD price data spanning January 1, 2014, to January 1, 2024, using the `yfinance` library. The dataset comprises 2,381 trading days. We engineered features including moving averages (50-day and 200-day), technical indicators (RSI, MACD), volatility measures (ATR), and a synthetic spread defined as the difference between the closing price and its 200-day SMA. Stationarity of the synthetic spread was verified with the Augmented Dickey-Fuller (ADF) test (p-value < 0.05).
+### Data Acquisition and Preparation
+We began by setting up the computational environment with essential Python libraries, including `pandas`, `numpy`, `yfinance`, `statsmodels`, `sklearn`, `xgboost`, `tensorflow`, `matplotlib`, `seaborn`, and `optuna`. A centralized configuration dictionary, `CONFIG`, was defined to manage parameters such as the market ticker (`EURUSD=X`), data range (2014-01-01 to 2024-12-31), and feature engineering windows.
 
-**Key Preprocessing Statistics**:
+Daily EUR/USD price data was fetched using `yfinance`, resulting in a dataset with columns for date, open, high, low, and close prices. Custom utility functions ensured data robustness: `get_market_data` cleaned the data by handling missing values via forward-fill imputation, while functions like `frac_diff` computed fractionally differentiated series, and others prepared technical indicators.
 
-- **Dataset Size**: 2,381 observations
-- **Feature Ranges**:
-  - 50-day SMA: 0.9632 to 1.3721
-  - 200-day SMA: 1.0023 to 1.3428
-  - RSI (14-day): 21.34 to 78.92 (mean: 49.87, std: 14.23)
-  - ATR (14-day): mean 0.0078, peak 0.0152
-  - Synthetic Spread: mean -0.0002, std 0.0371, range -0.1423 to 0.1594
+### Feature Engineering and Analysis
+A synthetic spread was created by subtracting a 50-day moving average from the closing price. The dataset was enriched with features including log returns, lagged returns (lags 1–5), RSI (14-day), MACD (12- and 26-day), Bollinger Bands (20-day, 2 std), ATR (14-day), Garman-Klass volatility (20-day), and a fractionally differentiated spread (\(d=0.5\), 252-day window).
 
-These steps ensured a clean, robust dataset with no significant missing values, critical for training deep learning models effectively.
+Correlation analysis removed features with correlations above 0.85, preserving critical variables (see Figure 1). Stationarity of the synthetic spread was validated using fractional differentiation, confirmed by ADF tests (see Figure 2).
 
-## Sections 6-7: Model Development and Hyperparameter Tuning
-We implemented and tuned several models to predict the synthetic spread:
+**Figure 1**: Feature Correlation Heatmap Before and After Pruning  
+![image](https://github.com/user-attachments/assets/657dacfd-7aee-4b7d-a24d-2749a7d28320)
+![image](https://github.com/user-attachments/assets/c4fd132f-48cc-4e31-b104-8ca052b41bed)
 
-- **LSTM-based Autoencoder**: Used for anomaly detection, optimized with 100 units, learning rate 0.001, and 50 epochs (validation MSE: 0.0032).
-- **LSTM**: Two-layer architecture with 64 units each, trained for 50 epochs (test MSE: 0.41).
-- **CNN-LSTM**: Integrated a 1D convolutional layer (32 filters) with an LSTM layer (64 units), yielding a test MSE of 0.43.
-- **Random Forest**: Achieved MSE 0.3959, RMSE 0.6292, MAE 0.4698, $R^2$ 0.8018.
-- **XGBoost**: Recorded MSE 0.4340, RMSE 0.6588, MAE 0.4873, $R^2$ 0.7827.
-- **OLS**: Baseline model with MSE 0.4521, $R^2$ 0.7712.
 
-**Model Performance Table**:
+**Figure 2**: ADF Test and Distribution Comparison for Original and Fractionally Differentiated Spread  
+![image](https://github.com/user-attachments/assets/41029d69-6495-4f8a-9315-35abf92a7ca8)
+![image](https://github.com/user-attachments/assets/37293ab0-4917-46e3-96da-ef618753afd8)
 
-| Model         | MSE    | RMSE   | MAE    | $R^2$ |
-|---------------|--------|--------|--------|-----------|
-| LSTM          | 0.41   | 0.6403 | -      | -         |
-| CNN-LSTM      | 0.43   | 0.6547 | -      | -         |
-| Random Forest | 0.3959 | 0.6292 | 0.4698 | 0.8018    |
-| XGBoost       | 0.4340 | 0.6588 | 0.4873 | 0.7827    |
-| OLS           | 0.4521 | 0.6721 | -      | 0.7712    |
 
-The Random Forest model showed superior predictive accuracy, while LSTM-based models excelled at capturing temporal dependencies, aligning with the project's focus on nonlinear dynamics.
+### Model Development and Tuning
+We developed an ensemble of models to predict the fractionally differentiated spread:
+- **Deep Learning Models**: LSTM, LSTM with attention, CNN-LSTM with attention, and an LSTM-based autoencoder.
+- **Traditional Models**: Random Forest, XGBoost, and OLS regression.
 
-## Sections 8-10: Signal Generation and Execution
-Trading signals were derived from predicted Z-scores of the synthetic spread. The ensemble approach, averaging predictions from all models, generated 29 trades over the test period (position counts: {0: 2111, -1: 138, 1: 112}). The autoencoder's anomaly detection (95th percentile reconstruction error: 0.0045) filtered out two trades, reducing the total to 27.
+Hyperparameter tuning was performed using `Optuna` on an initial training set (50% of data). Deep learning models optimized parameters like LSTM units (32–128), learning rates (10⁻⁴–10⁻²), filters (16–64), and kernel sizes (2–5). Traditional models tuned estimators (50–300), depths (5–20 for RF, 3–10 for XGB), and learning rates (10⁻³–0.3 for XGB).
 
-**Signal Statistics**:
+### Strategy Execution and Backtesting
+A walk-forward validation approach with 10 folds (100-day test windows) simulated real-time trading. Predictions from all models were averaged into an ensemble, weighted dynamically based on inverse MAE after three folds. Trading signals were derived using Z-score thresholds (entry: 1.5, exit: 0.5) with RSI filters. Risk management included stop-losses (5%), take-profits (10%), and Kelly criterion position sizing (fraction 0.2), accounting for transaction costs (0.02%).
 
-- **Ensemble Trade Frequency**: 29 trades (27 post-anomaly filtering)
-- **Position Distribution**: 250 non-zero position days out of 2,381
-- **Z-score Metrics**: Mean -0.0023, std 0.9871
+### Final Performance Analysis, Comparison, & Visualization
+In this final step, we evaluated the trading strategy using key metrics: cumulative returns, Sharpe ratio, Sortino ratio, Calmar ratio, and maximum drawdown. The ensemble strategy was compared against individual models and a buy-and-hold benchmark.
 
-This conservative trading approach reflects the ensemble's ability to balance signal quality and stability.
+**Predictive Power Analysis**:
 
-## Sections 11-13: Backtesting and Risk Management
-Backtesting employed a walk-forward method with five folds, incorporating risk controls (max position: 1, 2% stop-loss per trade). The ensemble strategy executed 27 trades, yielding a cumulative return of 1.0111 (1.11% gain). The LSTM model outperformed with a return of 1.1037 (10.37%), while XGBoost lagged at 0.9944 (-0.56%).
+The table below summarizes the predictive accuracy of each model, measured by average MAE, RMSE, R-squared, and the standard deviation of R-squared across folds.
 
-**Backtesting Results**:
+| Model              |   Avg MAE |   Avg RMSE |   Avg R-Squared |   Std Dev (R-Squared) |
+|:-------------------|----------:|-----------:|----------------:|----------------------:|
+| OLS                |    0.0015 |     0.0018 |          0.896  |                0.0825 |
+| XGB                |    0.0016 |     0.0019 |          0.8919 |                0.0622 |
+| RF                 |    0.0017 |     0.002  |          0.8816 |                0.0589 |
+| LSTM               |    0.0041 |     0.0053 |          0.028  |                0.1623 |
+| ENSEMBLE           |    0.0065 |     0.0091 |        -11.5474 |               32.1661 |
+| CNN_LSTM_ATTENTION |    0.0427 |     0.0524 |       -148.137  |              209.094  |
+| LSTM_ATTENTION     |    0.1741 |     0.1978 |      -1750.05   |             2023.36   |
 
-| Model    | Cumulative Return | Mean Daily Return | Std Dev  | Max Drawdown |
-|----------|-------------------|-------------------|----------|--------------|
-| Ensemble | 1.0111            | $5.12 \times 10^{-6}$ | 0.00087 | -0.0320      |
-| LSTM     | 1.1037            | -                 | -        | -0.0744      |
-| XGBoost  | 0.9944            | -                 | -        | -0.1381      |
+**Financial Performance Analysis**:
 
-The ensemble's low drawdown underscores its robustness, while the LSTM's higher returns highlight its potential in volatile markets.
+The following table presents the financial performance of each model's trading strategy, including cumulative return, risk-adjusted ratios, and maximum drawdown.
 
-## Section 14: Performance Evaluation and Visualization
-The ensemble strategy was benchmarked against a buy-and-hold approach, which returned 0.8904 (-10.96%). The ensemble achieved a cumulative return of 0.0111, Sharpe ratio of 0.0865, and maximum drawdown of -0.0320, outperforming the benchmark in risk-adjusted terms.
+| Model              |   Cumulative Return (%) |   Sharpe Ratio |   Sortino Ratio |   Calmar Ratio |   Max Drawdown (%) |
+|:-------------------|------------------------:|---------------:|----------------:|---------------:|-------------------:|
+| CNN_LSTM_ATTENTION |                0        |        0       |        0        |       0        |           0        |
+| LSTM               |                0        |        0       |        0        |       0        |           0        |
+| LSTM_ATTENTION     |                0        |        0       |        0        |       0        |           0        |
+| ENSEMBLE           |               -0.786978 |       -3.38388 |       -0.770235 |      -0.252745 |          -0.786978 |
+| OLS                |               -0.898032 |       -3.68757 |       -0.917066 |      -0.252851 |          -0.898032 |
+| RF                 |               -1.50367  |       -3.89715 |       -1.09785  |      -0.25343  |          -1.50367  |
+| XGB                |               -1.50367  |       -3.89715 |       -1.09785  |      -0.25343  |          -1.50367  |
 
-**Performance Metrics Table**:
+**Ensemble Comparison**:
 
-| **Model**       | **Cum. Return** | **Sharpe** | **Sortino** | **Calmar** | **Max Drawdown** |
-|-----------------|-----------------|------------|-------------|------------|------------------|
-| Buy-and-Hold    | -0.1096         | -0.1113    | -0.1112     | 0.0519     | -0.2351          |
-| LSTM            | 0.1037          | 0.3366     | 0.1683      | 0.1424     | -0.0744          |
-| CNN-LSTM        | -0.0307         | -0.0943    | -0.0428     | 0.0470     | -0.0705          |
-| RandomForest    | 0.0539          | 0.1475     | 0.1388      | 0.0276     | -0.2038          |
-| XGBoost         | -0.0056         | -0.0027    | -0.0016     | 0.0043     | -0.1381          |
-| OLS             | 0.0551          | 0.1508     | 0.1337      | 0.0273     | -0.2104          |
-| Ensemble        | 0.0111          | 0.0865     | 0.0203      | 0.0366     | -0.0320          |
+We also compared the all-model ensemble with a top 3 ensemble (RF, XGB, OLS):
 
-**Visualization**:
-The image below compares the cumulative returns of the ensemble strategy and buy-and-hold strategy from 2015 to 2024. The ensemble strategy (blue line) remains stable near 1.00, while the buy-and-hold strategy (orange line) fluctuates significantly between 0.85 and 0.99.
+**Predictive Power Comparison**:
 
-![Ensemble Performance vs Buy-and-Hold](https://github.com/user-attachments/assets/b26bf2a2-fc44-4bb6-a1af-7b58257c4214)
-*Figure: Comparison of cumulative returns for the ensemble strategy and buy-and-hold strategy over 2015-2024.*
+| Metric        |   All-Model Ensemble |   Top 3 Ensemble |
+|:--------------|---------------------:|-----------------:|
+| Avg MAE       |               0.0065 |           0.0015 |
+| Avg RMSE      |               0.0091 |           0.0017 |
+| Avg R-Squared |             -11.5474 |           0.9067 |
 
-This graph illustrates the ensemble strategy's ability to maintain consistent performance, reinforcing the value of deep learning in enhancing pair trading strategies.
+**Financial Performance Comparison**:
+
+| Metric                |   All-Model Ensemble |   Top 3 Ensemble |
+|:----------------------|---------------------:|-----------------:|
+| Cumulative Return (%) |              -0.787  |          -1.0667 |
+| Sharpe Ratio          |              -3.3839 |          -3.9182 |
+| Sortino Ratio         |              -0.7702 |          -1.022  |
+| Calmar Ratio          |              -0.2527 |          -0.253  |
+| Max Drawdown (%)      |              -0.787  |          -1.0667 |
+
+**Key Insights**:
+- **Predictive Accuracy**: Traditional models (OLS, XGB, RF) significantly outperformed deep learning models, achieving low errors and high R-squared values (e.g., OLS: MAE 0.0015, R² 0.896).
+- **Financial Performance**: All strategies incurred losses, with the all-model ensemble performing best among them (cumulative return -0.787%, Sharpe -3.3839). The buy-and-hold benchmark yielded approximately -10%.
+- **Ensemble Comparison**: The top 3 ensemble showed superior predictive power (R² 0.9067 vs. -11.5474) but worse financial performance (-1.0667% vs. -0.787%), highlighting the challenge of translating predictive accuracy into profitability with daily data.
+
+**Figure 3**: Model Comparison by Average Mean Absolute Error (MAE)  
+![image](https://github.com/user-attachments/assets/9852afa6-5c11-473a-bcb8-633ef3e2d278)
+
+
+This analysis underscores the limitations of daily data in capturing short-lived mean-reverting opportunities, suggesting that higher-frequency data could better leverage the models' predictive capabilities.
