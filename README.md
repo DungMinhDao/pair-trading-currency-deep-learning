@@ -48,7 +48,7 @@ This is the current workflow of the project. We implemented a demonstration of t
 
 
 # Code
-The code for this project is organized into several sections, each corresponding to a key phase of the workflow. Below, we provide a detailed overview of the work done in each group of sections, along with result tables and visualizations where applicable. The full code for analysis and results is available in the committed IPython Notebook file, also accessible on Google Colab [here](https://colab.research.google.com/drive/1q8vL-H1VYMqL6DmmFG6h_N2LVgcWXgGj?usp=sharing).
+The code for this project is organized into several sections, each corresponding to a key phase of the workflow. Below, we provide a detailed overview of the work done in each group of sections, along with result tables and visualizations where applicable. The full code for analysis and results is available in the committed IPython Notebook file, also accessible on Google Colab [here](https://colab.research.google.com/drive/1-bsVDmHO31_sHh-4bPYuXfBaA-2SD3_w?usp=sharing).
 
 ### Data Acquisition and Preparation
 We began by setting up the computational environment with essential Python libraries, including `pandas`, `numpy`, `yfinance`, `statsmodels`, `sklearn`, `xgboost`, `tensorflow`, `matplotlib`, `seaborn`, and `optuna`. A centralized configuration dictionary, `CONFIG`, was defined to manage parameters such as the market ticker (`EURUSD=X`), data range (2014-01-01 to 2024-12-31), and feature engineering windows.
